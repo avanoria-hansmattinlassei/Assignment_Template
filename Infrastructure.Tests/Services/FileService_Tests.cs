@@ -1,108 +1,66 @@
 ﻿using Infrastructure.Interfaces;
 using Infrastructure.Models;
+using Infrastructure.Repositories;
+using Infrastructure.Services;
 using Moq;
 
 namespace Infrastructure.Tests.Services;
 
 public class FileService_Tests
 {
-    [Fact]
-    public void SaveContentToFile_ShouldReturnTrue_WhenContentSavedToFile()
+    private Mock<IFileRepository> _fileRepositoryMock;
+    private IFileService _fileService;
+
+    public FileService_Tests()
     {
-        // Arrange
-        var fileResult = new FileResult { Succeeded = true };
+        _fileRepositoryMock = new Mock<IFileRepository>();
+        _fileService = new FileService(_fileRepositoryMock.Object);
+    }
 
-        var fileServiceMock = new Mock<IFileService>();
-        var fileService = fileServiceMock.Object;
+    [Fact]
+    public void GetContentFromFile_ShouldReturnTrueAndStringContent_WhenFileExists()
+    {
+        _fileRepositoryMock.Setup(fr => fr.FileExists(It.IsAny<string>())).Returns(true);
+        _fileRepositoryMock.Setup(fr => fr.GetFileContent(It.IsAny<string>())).Returns("this is content");
 
-        fileServiceMock.Setup(fs => fs.SaveContentToFile(It.IsAny<string>(), It.IsAny<string>()))
-            .Returns(fileResult);
 
-        // Act
-        var result = fileService.SaveContentToFile("", "");
+        var result = _fileService.GetContentFromFile("");
 
-        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal("this is content", result.Content);
+    }
+
+    [Fact]
+    public void GetContentFromFile_ShouldReturnFalseAndErrorMessage_WhenFileNotExists()
+    {
+        _fileRepositoryMock.Setup(fr => fr.FileExists(It.IsAny<string>())).Returns(false);
+
+        var result = _fileService.GetContentFromFile("");
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("File Not Found", result.Error);
+    }
+
+    [Fact]
+    public void SaveContentToFile_ShouldReturnTrue_WhenContentIsSaved()
+    {
+        _fileRepositoryMock.Setup(fr => fr.SaveFileContent(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(true);
+
+        var result = _fileService.SaveContentToFile("", "");
+
         Assert.True(result.Succeeded);
     }
 
     [Fact]
-    public void SaveContentToFile_ShouldReturnFalseWithError_WhenContentNotSavedToFile()
+    public void SaveContentToFile_ShouldReturnFalse_WhenContentUnableToSave()
     {
-        // Arrange
-        var fileResult = new FileResult { Succeeded = false, Error = "Unable to save content." };
+        _fileRepositoryMock.Setup(fr => fr.SaveFileContent(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(false);
 
-        var fileServiceMock = new Mock<IFileService>();
-        var fileService = fileServiceMock.Object;
+        var result = _fileService.SaveContentToFile("", "");
 
-        fileServiceMock.Setup(fs => fs.SaveContentToFile(It.IsAny<string>(), It.IsAny<string>()))
-            .Returns(fileResult);
-
-        // Act
-        var result = fileService.SaveContentToFile("", "");
-
-        // Assert
         Assert.False(result.Succeeded);
-        Assert.Equal("Unable to save content.", result.Error);
     }
 
-    [Fact]
-    public void GetContentFromFile_ShoudlReturnTrueAndContentAsJson_WhenFileFound()
-    {
-        // Arrange
-        var jsonContent = "[{ \"Id\": \"31f5e0f1-16b2-42c1-be48-f3d9f97268e3\", \"Name\": \"Test Product\", \"Price\" : 100.00 }]";
-        var fileResult = new FileResult { Succeeded = true, Content = jsonContent };
-
-        var fileServiceMock = new Mock<IFileService>();
-        var fileService = fileServiceMock.Object;
-
-        fileServiceMock.Setup(fs => fs.GetContentFromFile(It.IsAny<string>()))
-            .Returns(fileResult);
-
-        // Act
-        var result = fileService.GetContentFromFile("");
-
-        // Assert
-        Assert.True(result.Succeeded);
-        Assert.Equal(jsonContent, result.Content);
-    }
-
-    [Fact]
-    public void GetContentFromFile_ShoudlReturnTrueAndEmptyString_WhenNoFileFound()
-    {
-        // Arrange
-        var fileResult = new FileResult { Succeeded = true, Content = "" };
-
-        var fileServiceMock = new Mock<IFileService>();
-        var fileService = fileServiceMock.Object;
-
-        fileServiceMock.Setup(fs => fs.GetContentFromFile(It.IsAny<string>()))
-            .Returns(fileResult);
-
-        // Act
-        var result = fileService.GetContentFromFile("");
-
-        // Assert
-        Assert.True(result.Succeeded);
-        Assert.Equal("", result.Content);
-    }
-
-    [Fact]
-    public void GetContentFromFile_ShoudlReturnFalseWithError_WhenExceptionOccured()
-    {
-        // Arrange
-        var fileResult = new FileResult { Succeeded = false, Error = "Something went wrong!" };
-
-        var fileServiceMock = new Mock<IFileService>();
-        var fileService = fileServiceMock.Object;
-
-        fileServiceMock.Setup(fs => fs.GetContentFromFile(It.IsAny<string>()))
-            .Returns(fileResult);
-
-        // Act
-        var result = fileService.GetContentFromFile("");
-
-        // Assert
-        Assert.False(result.Succeeded);
-        Assert.False(string.IsNullOrEmpty(result.Error));
-    }
 }
